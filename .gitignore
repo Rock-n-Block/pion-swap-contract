@@ -1,4 +1,6 @@
 .vscode
 node_modules
 .env
+build
+migrations/2_deploy_contracts.js
 

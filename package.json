@@ -5,10 +5,16 @@
   "license": "MIT",
   "scripts": {
     "compile": "truffle compile",
-    "test": "truffle test"
+    "test": "./scripts/test.sh",
+    "deploy-ropsten": "./scripts/fix-migrations.sh && truffle migrate --reset --network ropsten",
+    "deploy-mainnet": "./scripts/fix-migrations.sh && truffle migrate --reset --network mainnet"
   },
   "dependencies": {
+    "@openzeppelin/test-environment": "^0.1.5",
+    "@openzeppelin/test-helpers": "^0.5.6",
     "@truffle/hdwallet-provider": "^1.1.0",
+    "bn.js": "^5.1.3",
+    "chai": "^4.2.0",
     "dotenv": "^8.2.0",
     "ganache-core": "^2.12.1",
     "openzeppelin-solidity": "^3.2.0",
