@@ -6,6 +6,7 @@ const expectRevert = require("./utils/expectRevert.js");
 chai.use(require("chai-bn")(BN));
 
 
+const PION = artifacts.require('PION');
 const  ERC20Mock = artifacts.require('ERC20Mock');
 const TokenSwap = artifacts.require('TokenSwap');
 
@@ -27,12 +28,7 @@ contract(
         beforeEach(async () => {
             // Init contracts
 
-            oldToken = await ERC20Mock.new(
-                'Old Token', 
-                'OLD', 
-                web3.utils.toWei('1000'), 
-                {from: deployer}
-            )
+            oldToken = await PION.new({from: deployer});
 
             newToken = await ERC20Mock.new(
                 'New Token', 
@@ -52,7 +48,8 @@ contract(
         })
 
         it("#1 should swap", async () => {
-            await oldToken.mint(account1, TOKEN_AMOUNT);
+            await oldToken.mint(TOKEN_AMOUNT);
+            await oldToken.transfer(account1, TOKEN_AMOUNT, {from: deployer});
             expect(
                 await oldToken.balanceOf(account1)
             ).to.be.bignumber.that.equals(TOKEN_AMOUNT);
@@ -79,6 +76,7 @@ contract(
         it("#1 should swap with multiple addresses", async () => {
             const doubleAmount = TOKEN_AMOUNT.mul(new BN("2"));
             await oldToken.mint(account1, TOKEN_AMOUNT);
+            await oldToken.transfer(account1, TOKEN_AMOUNT, {from: deployer});
             expect(
                 await oldToken.balanceOf(account1)
             ).to.be.bignumber.that.equals(TOKEN_AMOUNT);
@@ -143,6 +141,7 @@ contract(
 
         it("#3 should not swap without approve", async () => {
             await oldToken.mint(account1, TOKEN_AMOUNT);
+            await oldToken.transfer(account1, TOKEN_AMOUNT, {from: deployer});
             expect(
                 await oldToken.balanceOf(account1)
             ).to.be.bignumber.that.equals(TOKEN_AMOUNT);

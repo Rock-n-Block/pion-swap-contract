@@ -11,9 +11,16 @@ contract TokenSwap is Ownable {
     IERC20 public oldToken;
     IERC20 public newToken;
 
-    mapping (address => uint256) public swappedUsers;
+    struct Swap {
+        uint256 tokenAmount;
+        uint256 initialTime;
+        bool[3] remainderClaimed;
+    }
 
-    event Swap(address indexed user, uint256 indexed amount);
+    // mapping (address => uint256) public swappedUsers;
+    mapping(address => Swap[]) public userSwaps;
+
+    event TokensSwapped(address indexed user, uint256 indexed amount);
 
     constructor (
         address _oldToken,
