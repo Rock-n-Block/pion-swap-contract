@@ -3,6 +3,7 @@ const chai = require("chai");
 const { expect } = require("chai");
 const helper = require("./utils/utils.js");
 const expectRevert = require("./utils/expectRevert.js");
+const { advanceTime } = require("./utils/utils.js");
 chai.use(require("chai-bn")(BN));
 
 
@@ -12,6 +13,9 @@ const TokenSwap = artifacts.require('TokenSwap');
 
 const TOKEN_AMOUNT = new BN((10 ** 18).toString());
 const ETH_ZERO_ADDERSS = '0x0000000000000000000000000000000000000000'
+
+const SWAP_PERIOD = new BN("86400");
+const SWAP_PERCENTAGE = new BN("25");
 
 contract(
     'TokenSwap',
@@ -37,8 +41,19 @@ contract(
                 {from: deployer}
             )
 
-            tokenSwap = await TokenSwap.new(oldToken.address, newToken.address, manager, {from: deployer});
+            tokenSwap = await TokenSwap.new(
+                oldToken.address, 
+                newToken.address, 
+                manager, 
+                SWAP_PERIOD,
+                SWAP_PERCENTAGE,
+                {from: deployer});
         })
+
+        const getBlockchainTimestamp = async () => {
+            const latestBlock = await web3.eth.getBlock('latest');
+            return latestBlock.timestamp;
+        };
 
         it("#0 deploy validation", async () => {
             expect(await tokenSwap.oldToken()).to.be.equals(oldToken.address);
@@ -47,7 +62,7 @@ contract(
             expect(await tokenSwap.balance()).to.be.zero;
         })
 
-        it("#1 should swap", async () => {
+        /* it("#1 should swap", async () => {
             await oldToken.mint(TOKEN_AMOUNT);
             await oldToken.transfer(account1, TOKEN_AMOUNT, {from: deployer});
             expect(
@@ -71,9 +86,65 @@ contract(
             expect(
                 await tokenSwap.getSwappedAmount(account1)
             ).to.be.bignumber.that.equals(TOKEN_AMOUNT)
+        }) */
+
+        it("#1 should swap", async () => {
+            await oldToken.mint(TOKEN_AMOUNT);
+            await oldToken.transfer(account1, TOKEN_AMOUNT, {from: deployer});
+            expect(
+                await oldToken.balanceOf(account1)
+            ).to.be.bignumber.that.equals(TOKEN_AMOUNT);
+            
+            await newToken.mint(tokenSwap.address, TOKEN_AMOUNT);
+            expect(
+                await newToken.balanceOf(tokenSwap.address)
+            ).to.be.bignumber.that.equals(TOKEN_AMOUNT);
+            
+            await oldToken.approve(tokenSwap.address, TOKEN_AMOUNT, {from: account1})
+            expect(
+                await oldToken.allowance(account1, tokenSwap.address)
+            ).to.be.bignumber.that.equals(TOKEN_AMOUNT)
+
+            await tokenSwap.swapTokens(TOKEN_AMOUNT, {from: account1})
+
+            const userSwapList = await tokenSwap.getUserSwaps(account1);
+            console.log(userSwapList);
+            const userSwapId = userSwapList[0]
+            console.log(userSwapId)
+
+            const userSwap = await tokenSwap.swapsById(userSwapId);
+            console.log(userSwap);
+
+             const firstPartTime = new BN(await getBlockchainTimestamp());
+            const firstPartTokens = TOKEN_AMOUNT.div(new BN("4"))
+            
+
+            expect(userSwap.totalAmount).to.be.bignumber.that.equals(TOKEN_AMOUNT);
+            expect(userSwap.withdrawnAmount).to.be.bignumber.that.equals(firstPartTokens);
+            expect(userSwap.initialTime).to.be.a.bignumber.that.equals(firstPartTime);
+            expect(userSwap.lastWithdrawTime).to.be.a.bignumber.zero;
+
+            expect(
+                await newToken.balanceOf(account1)
+            ).to.be.bignumber.that.equals(firstPartTokens)
+
+            await advanceTime(SWAP_PERIOD.toNumber() + 5);
+
+            const secondPartTime = new BN(await getBlockchainTimestamp());
+            const secondPartTokens = TOKEN_AMOUNT.div(new BN("2"));
+            // expect(secondPartTime).to.be.bignumber.that.equals(firstPartTime.add(SWAP_PERIOD));
+
+            await tokenSwap.withdrawRemainingTokens(userSwapId, {from: account1});
+
+            expect(
+                await newToken.balanceOf(account1)
+            ).to.be.bignumber.that.equals(secondPartTokens)
+
+            const userSwapSecond = await tokenSwap.swapsById(userSwapId);
+            console.log(userSwapSecond);
         })
 
-        it("#1 should swap with multiple addresses", async () => {
+        /* it("#1.1 should swap with multiple addresses", async () => {
             const doubleAmount = TOKEN_AMOUNT.mul(new BN("2"));
             await oldToken.mint(account1, TOKEN_AMOUNT);
             await oldToken.transfer(account1, TOKEN_AMOUNT, {from: deployer});
@@ -116,10 +187,11 @@ contract(
             expect(
                 await tokenSwap.getSwappedAmount(account2)
             ).to.be.bignumber.that.equals(TOKEN_AMOUNT)
-        })
+        }) */
 
         it("#2 should not swap if new token not supplied", async () => {
-            await oldToken.mint(account1, TOKEN_AMOUNT);
+            await oldToken.mint(TOKEN_AMOUNT);
+            await oldToken.transfer(account1, TOKEN_AMOUNT, {from: deployer});
             expect(
                 await oldToken.balanceOf(account1)
             ).to.be.bignumber.that.equals(TOKEN_AMOUNT);
@@ -140,7 +212,7 @@ contract(
         })
 
         it("#3 should not swap without approve", async () => {
-            await oldToken.mint(account1, TOKEN_AMOUNT);
+            await oldToken.mint(TOKEN_AMOUNT);
             await oldToken.transfer(account1, TOKEN_AMOUNT, {from: deployer});
             expect(
                 await oldToken.balanceOf(account1)
@@ -157,7 +229,7 @@ contract(
 
             await expectRevert(
                 tokenSwap.swapTokens(TOKEN_AMOUNT, {from: account1}),
-                "ERC20: transfer amount exceeds allowance"
+                "revert"
             )
         })
 
