@@ -7,7 +7,9 @@
     "compile": "truffle compile",
     "test": "./scripts/test.sh",
     "deploy-ropsten": "./scripts/fix-migrations.sh && truffle migrate --reset --network ropsten",
-    "deploy-mainnet": "./scripts/fix-migrations.sh && truffle migrate --reset --network mainnet"
+    "deploy-mainnet": "./scripts/fix-migrations.sh && truffle migrate --reset --network mainnet",
+    "verify-ropsten": "truffle run verify TokenSwap --network ropsten --license GPL-3.0-only",
+    "verify-live": "truffle run verify TokenSwap  --network live --license GPL-3.0-only"
   },
   "dependencies": {
     "@openzeppelin/test-environment": "^0.1.5",
@@ -18,7 +20,9 @@
     "dotenv": "^8.2.0",
     "ganache-core": "^2.12.1",
     "openzeppelin-solidity": "^3.2.0",
+    "solidity-coverage": "^0.7.10",
     "truffle": "^5.1.46",
-    "truffle-flattener": "^1.5.0"
+    "truffle-flattener": "^1.5.0",
+    "truffle-plugin-verify": "^0.4.0"
   }
 }

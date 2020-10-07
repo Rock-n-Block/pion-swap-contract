@@ -108,13 +108,9 @@ contract(
             await tokenSwap.swapTokens(TOKEN_AMOUNT, {from: account1})
 
             const userSwapList = await tokenSwap.getUserSwaps(account1);
-            console.log(userSwapList);
             const userSwapId = userSwapList[0]
-            console.log(userSwapId)
-
             const userSwap = await tokenSwap.swapsById(userSwapId);
-            console.log(userSwap);
-
+            
              const firstPartTime = new BN(await getBlockchainTimestamp());
             const firstPartTokens = TOKEN_AMOUNT.div(new BN("4"))
             
@@ -128,11 +124,12 @@ contract(
                 await newToken.balanceOf(account1)
             ).to.be.bignumber.that.equals(firstPartTokens)
 
-            await advanceTime(SWAP_PERIOD.toNumber() + 5);
+            // SECOND PERIOD
+            await advanceTimeAndBlock(SWAP_PERIOD.toNumber());
 
             const secondPartTime = new BN(await getBlockchainTimestamp());
             const secondPartTokens = TOKEN_AMOUNT.div(new BN("2"));
-            // expect(secondPartTime).to.be.bignumber.that.equals(firstPartTime.add(SWAP_PERIOD));
+            expect(secondPartTime).to.be.bignumber.that.at.least(firstPartTime.add(SWAP_PERIOD));
 
             await tokenSwap.withdrawRemainingTokens(userSwapId, {from: account1});
 
@@ -141,7 +138,51 @@ contract(
             ).to.be.bignumber.that.equals(secondPartTokens)
 
             const userSwapSecond = await tokenSwap.swapsById(userSwapId);
-            console.log(userSwapSecond);
+            expect(userSwapSecond.totalAmount).to.be.bignumber.that.equals(TOKEN_AMOUNT);
+            expect(userSwapSecond.withdrawnAmount).to.be.bignumber.that.equals(secondPartTokens);
+            expect(userSwapSecond.initialTime).to.be.a.bignumber.that.at.least(firstPartTime);
+            expect(userSwapSecond.lastWithdrawTime).to.be.a.bignumber.that.at.least(secondPartTime);
+
+            // THIRD PERIOD 
+            await advanceTimeAndBlock(SWAP_PERIOD.toNumber());
+
+            const thirdPartTime = new BN(await getBlockchainTimestamp());
+            const thirdPartTokens = TOKEN_AMOUNT.mul(new BN("3")).div(new BN("4"));
+            expect(thirdPartTime).to.be.bignumber.that.equals(firstPartTime.add(SWAP_PERIOD.mul(new BN("2"))));
+
+            await tokenSwap.withdrawRemainingTokens(userSwapId, {from: account1});
+
+            expect(
+                await newToken.balanceOf(account1)
+            ).to.be.bignumber.that.equals(thirdPartTokens)
+
+            const userSwapThird= await tokenSwap.swapsById(userSwapId);
+            expect(userSwapThird.totalAmount).to.be.bignumber.that.equals(TOKEN_AMOUNT);
+            expect(userSwapThird.withdrawnAmount).to.be.bignumber.that.equals(thirdPartTokens);
+            expect(userSwapThird.initialTime).to.be.a.bignumber.that.at.least(firstPartTime);
+            expect(userSwapThird.lastWithdrawTime).to.be.a.bignumber.that.equals(thirdPartTime);
+
+
+            // FOURTH PERIOD 
+            await advanceTimeAndBlock(SWAP_PERIOD.toNumber());
+
+            const fourthPartTime = new BN(await getBlockchainTimestamp());
+            const fourthPartTokens = TOKEN_AMOUNT;
+            expect(fourthPartTime).to.be.bignumber.that.at.least(firstPartTime.add(SWAP_PERIOD.mul(new BN("3"))));
+
+            await tokenSwap.withdrawRemainingTokens(userSwapId, {from: account1});
+
+            expect(
+                await newToken.balanceOf(account1)
+            ).to.be.bignumber.that.equals(fourthPartTokens)
+
+            const userSwapFourth = await tokenSwap.swapsById(userSwapId);
+            expect(userSwapFourth.totalAmount).to.be.bignumber.that.equals(TOKEN_AMOUNT);
+            expect(userSwapFourth.withdrawnAmount).to.be.bignumber.that.equals(TOKEN_AMOUNT);
+            expect(userSwapFourth.initialTime).to.be.a.bignumber.that.at.least(firstPartTime);
+            expect(userSwapFourth.lastWithdrawTime).to.be.a.bignumber.that.equals(fourthPartTime);
+
+            
         })
 
         /* it("#1.1 should swap with multiple addresses", async () => {

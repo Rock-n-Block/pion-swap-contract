@@ -2,11 +2,12 @@
 
 pragma solidity ^0.6.0;
 
+import "openzeppelin-solidity/contracts/GSN/Context.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/access/Ownable.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
-contract TokenSwap is Ownable {
+contract TokenSwap is Context, Ownable {
     using SafeMath for uint256;
 
     address public deployer;
@@ -104,7 +105,7 @@ contract TokenSwap is Ownable {
 
     function swapTokens(uint256 amount) public {
         require(
-            oldToken.transferFrom(msg.sender, address(this), amount),
+            oldToken.transferFrom(_msgSender(), address(this), amount),
             "TokenSwap: failed to transfer user tokens"
         ); 
 
@@ -117,23 +118,23 @@ contract TokenSwap is Ownable {
             lastWithdrawTime: 0
         });
 
-        bytes32 swapId = keccak256(abi.encodePacked(msg.sig, msg.sender, amount, now));
+        bytes32 swapId = keccak256(abi.encodePacked(msg.sig, _msgSender(), amount, now));
 
         swapsById[swapId] = initialSwap;
-        userSwaps[msg.sender].push(swapId);
+        userSwaps[_msgSender()].push(swapId);
 
         require(
-            newToken.transfer(msg.sender, amountToSend),
+            newToken.transfer(_msgSender(), amountToSend),
             "TokenSwap: failed to transfer new tokens to user"
         );
 
-        emit TokensSwapped(msg.sender, amountToSend, true);
+        emit TokensSwapped(_msgSender(), amountToSend, true);
     }
 
 
     function withdrawRemainingTokens(bytes32 swapId) public {
         Swap storage userSwap = swapsById[swapId];
-        // Swap memory userSwap = userSwaps[msg.sender][swapIndex];
+        // Swap memory userSwap = userSwaps[_msgSender()][swapIndex];
 
         // uint256 secondsPassed = now - userSwap.initialTime;
         uint256 secondsPassed = userSwap.lastWithdrawTime == 0 ? now .sub(userSwap.initialTime) : now.sub(userSwap.lastWithdrawTime);
@@ -153,10 +154,10 @@ contract TokenSwap is Ownable {
         userSwap.lastWithdrawTime = now;
 
         require(
-            newToken.transfer(msg.sender, amountToSend),
+            newToken.transfer(_msgSender(), amountToSend),
             "TokenSwap: failed to transfer new tokens to user"
         );
 
-        emit TokensSwapped(msg.sender, amountToSend, false);
+        emit TokensSwapped(_msgSender(), amountToSend, false);
     }
 }
